@@ -4,6 +4,11 @@ project(neuronet)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 add_subdirectory(src)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_PREFIX_PATH "/opt/Qt/5.8/gcc_64")
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+# Instruct CMake to run moc automatically when needed.
+set(CMAKE_AUTOMOC ON)
 
 ################################
 # GTest

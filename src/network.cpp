@@ -7,41 +7,47 @@
 //
 //----------------------------------------------------------------------------------------------------------------------
 
-
 #include "network.h"
 #include "neuron.h"
 
 #include <iostream>
 #include <cmath>
+#include <memory>
 
-Network::Network(Topology& topology)
-
+Network::Network(Topology& topology, spdlog::logger& log)
+    : m_log(log)
 {
-    std::cout << "Instantiating network" << std::endl;
     size_t layers = topology.size();
+
+    size_t count = 0;
+
+    m_log.info("Setting up topology");
 
     // store each array of layers
     for (size_t layer_num = 0; layer_num < layers; ++layer_num)
     {
         m_layers.emplace_back(Layer());
-
         // each layer has an amount of outputs equal to the next layer
         // exept for the last layer which has no outputs
-        auto outputs = layer_num == topology.size() - 1 ? 0 : topology[layer_num + 1];
+        auto outputs = layer_num
+                       == topology.size() - 1 ? 0 : topology[layer_num + 1];
 
         m_layers.resize(topology[layer_num]);
 
         // for each new layer, fill it with neurons and add a bias
-        for (size_t neuron_id = 0; neuron_id <= topology[layer_num]; ++neuron_id)
+        for (size_t neuron_id = 0; neuron_id <= topology[layer_num];
+             ++neuron_id)
         {
             m_layers.back().emplace_back(Neuron(outputs, neuron_id));
+            ++count;
         }
 
         // last entry in all vectors is the bias node, set it to 1.0
         m_layers.back().back().set_output_value(1.0);
     }
-}
 
+    m_log.info("Created {} neurons", count);
+}
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -49,6 +55,7 @@ void Network::feed_forward(InputValues& input_values)
 {
     for (size_t i = 0; i < input_values.size(); ++i)
     {
+        // feed the input data to the first row (input row)
         m_layers[0][i].set_output_value(input_values[i]);
     }
 
@@ -63,7 +70,6 @@ void Network::feed_forward(InputValues& input_values)
         }
     }
 }
-
 
 //----------------------------------------------------------------------------------------------------------------------
 
@@ -84,8 +90,9 @@ void Network::back_propagation(const TargetValues& target_values)
     m_error = std::sqrt(m_error);
 
     // implement a recent average measurement
-    m_recent_average_error = (m_recent_average_error * m_recent_average_smoothing_factor + m_error) /
-                             (m_recent_average_smoothing_factor + 1.0);
+    m_recent_average_error
+        = (m_recent_average_error * m_recent_average_smoothing_factor + m_error)
+          / (m_recent_average_smoothing_factor + 1.0);
 
     // calculate output layer gradients
     for (size_t n = 0; n < output_layer.size() - 1; ++n)
@@ -105,7 +112,8 @@ void Network::back_propagation(const TargetValues& target_values)
         }
     }
 
-    // for all layers from outputs to first hidden layer, update connection weights
+    // for all layers from outputs to first hidden layer, update connection
+    // weights
     for (size_t layer_num = m_layers.size() - 1; layer_num > 0; --layer_num)
     {
         Layer& layer = m_layers[layer_num];
@@ -118,7 +126,6 @@ void Network::back_propagation(const TargetValues& target_values)
     }
 }
 
-
 //----------------------------------------------------------------------------------------------------------------------
 
 void Network::results(Network::ResultValues& result_vals) const
@@ -130,5 +137,3 @@ void Network::results(Network::ResultValues& result_vals) const
         result_vals.push_back(m_layers.back()[n].get_output_value());
     }
 }
-
-
